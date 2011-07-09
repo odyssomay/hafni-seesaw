@@ -78,17 +78,18 @@ IMPORTANT: If you use the :content field, the model of the tree will change!
   [tree field f] 
   (case field
     :selected (let [currently_selected (atom [])
-                    selection_listener (reify javax.swing.event.TreeSelectionListener
-                                         (valueChanged [this e]
-                                                       (let [paths (.getPaths e)
-                                                             added (filter #(.isAddedPath e %) paths)
-                                                             removed (remove #(.isAddedPath e %) paths)]
-                                                         (dorun (map (fn [r]
-                                                                       (swap! currently_selected
-                                                                              #(drop-nth (find-i r %) %))) removed))
-                                                         (swap! currently_selected concat added)
-                                                         (->> @currently_selected
-                                                           (map tree-path-to-seq)
-                                                           f))))]
+                    selection_listener 
+                    (reify javax.swing.event.TreeSelectionListener
+                      (valueChanged [this e]
+                                    (let [paths (.getPaths e)
+                                          added (filter #(.isAddedPath e %) paths)
+                                          removed (remove #(.isAddedPath e %) paths)]
+                                      (dorun (map (fn [r]
+                                                    (swap! currently_selected
+                                                           #(drop-nth (find-i r %) %))) removed))
+                                      (swap! currently_selected concat added)
+                                      (->> @currently_selected
+                                        (map tree-path-to-seq)
+                                        f))))]
                 (.addTreeSelectionListener tree selection_listener)
                 #(.removeTreeSelectionListener tree selection_listener))))
