@@ -39,7 +39,6 @@
 
 (defn listen 
   ([c field f]
-   (println c field f)
    (condp #(isa? (class %2) %1) c
 ;; text
      javax.swing.JTextPane (text-pane-event c field f)
