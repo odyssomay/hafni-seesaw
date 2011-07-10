@@ -39,6 +39,7 @@
 
 (defn listen 
   ([c field f]
+   (println c field f)
    (condp #(isa? (class %2) %1) c
 ;; text
      javax.swing.JTextPane (text-pane-event c field f)
@@ -47,6 +48,16 @@
 ;; otherwise
      (ssw/listen c field f)))
   ([c field f & fields+fs]
-   #(do (listen c field f)
-        (apply listen c fields+fs))))
+   (let [l1 (listen c field f)
+         l2 (apply listen c fields+fs)]
+     #(do (l1)
+        (l2)))))
+
+(defn config!
+  ([c field value]
+   ((input-arr c field) value))
+  ([c field value & fields+values]
+   {:pre [(even? (count fields+values))]}
+   (config! c field value)
+   (apply config! c fields+values)))
 
