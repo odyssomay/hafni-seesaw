@@ -9,8 +9,7 @@
           [text :only [text-pane-input-arr text-pane-event]]
           [tree :only [tree-input-arr tree-event]]))
   (:require [clojure.tools.logging :as log]
-            (seesaw [core :as ssw]
-                    [meta :as ssw-meta])))
+            (seesaw [core :as ssw])))
 
 (defn input-arr [c field]
   (>>>
@@ -48,8 +47,7 @@
   ([c field f & fields+fs]
    (let [l1 (listen c field f)
          l2 (apply listen c fields+fs)]
-     #(do (l1)
-        (l2)))))
+     #(do (l1) (l2)))))
 
 (defn config!
   ([c field value]
