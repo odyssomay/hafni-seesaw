@@ -1,5 +1,6 @@
 (ns hafni-seesaw.tree
   (:use (hafni-seesaw 
+          [meta :only [put-meta! get-meta]]
           [utils :only [drop-nth find-i]]))
   (:require [seesaw.core :as ssw]))
 
@@ -52,29 +53,28 @@
 
 ;; API
 
-(let [tree_cont (atom {})]
-  (defn tree-input-arr 
-    "Fields:
-IMPORTANT: If you use the :content field, the model of the tree will change!
+(defn tree-input-arr 
+  "Fields:
+  IMPORTANT: If you use the :content field, the model of the tree will change!
 
-    :content - a map with nodes represented as 
-               {:root String :child [{:root String :child [...]}]} | Map"
-    [c field]
-    (case field
-      :content
-      (if (contains? @tree_cont c)
-        #(swap! (get @tree_cont c) (constantly (map-to-nodes %)))
-        (let [nodes (atom (node. nil nil))
-              model (tree-model. nodes (atom []))]
-          (.setModel c model)
-          (add-watch nodes nil (fn [& _] (fire-tree-structure-changed model)))
-          (swap! tree_cont assoc c nodes)
-          (recur c field)))
-      #(ssw/config! c field %))))
+  :content - a map with nodes represented as 
+             {:root String :child [{:root String :child [...]}]} | Map"
+  [c field]
+  (case field
+    :content
+    (if-let [a (get-meta c ::tree-model-nodes)]
+      #(swap! a (constantly (map-to-nodes %)))
+      (let [nodes (atom (node. nil nil))
+            model (tree-model. nodes (atom []))]
+        (.setModel c model)
+        (add-watch nodes nil (fn [& _] (fire-tree-structure-changed model)))
+        (put-meta! c ::tree-model-nodes nodes)
+        (recur c field)))
+    #(ssw/config! c field %)))
 
 (defn tree-event 
   ":selected - when the user changes the selection,
-  this event sends the current selection | [[String]]"
+               this event sends the current selection | [[String]]"
   [tree field f] 
   (case field
     :selected (let [currently_selected (atom [])

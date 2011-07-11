@@ -1,34 +1,31 @@
 (ns hafni-seesaw.container
   (:use 
     (hafni-seesaw 
-      [utils :only [drop-nth]])
+      [utils :only [drop-nth]]
+      [meta :only [put-meta! get-meta]])
     [clj-diff.core :only [diff]])
   (:require
     [seesaw.core :as ssw]))
 
-(let [comp_cont (atom {})]
-  (defn change-container-content
-    "Change the content of a container,
-    insert_f - a function of 2 arguments: the index, and the object to add
-    remove_f - a function of 1 arguments: the index to remove
+(defn change-container-content
+  "Change the content of a container,
+  insert_f - a function of 2 arguments: the index, and the object to add
+  remove_f - a function of 1 arguments: the index to remove
 
-    returns a function that is called with the new items, the container
-    will be changed to match the new items."
-    [c insert_f remove_f]
-    (if (contains? @comp_cont c)
-      (let [last_items (get @comp_cont c)]
-        (fn [new_items]
-          (let [d (diff @last_items new_items)
-                with_removed (reduce #(drop-nth %2 %1) @last_items (reverse (:- d)))
-                with_added (diff with_removed new_items)]
-            (dorun (map remove_f (reverse (:- d))))
-            (dorun (map (fn [xs]
-                          (let [index (inc (first xs))
-                                items (rest xs)]
-                            (dorun (map #(insert_f index %) (reverse items))))) (:+ with_added))))
-          (swap! last_items (constantly new_items))))
-      (do (swap! comp_cont assoc c (atom []))
-          (recur c insert_f remove_f)))))
+  returns a function that is called with the new items, the container
+  will be changed to match the new items."
+  [c insert_f remove_f]
+  (fn [new_items]
+    (let [last_items (get-meta c ::container-content)
+          d (diff last_items new_items)
+          with_removed (reduce #(drop-nth %2 %1) last_items (reverse (:- d)))
+          with_added (diff with_removed new_items)]
+      (dorun (map remove_f (reverse (:- d))))
+      (dorun (map (fn [xs]
+                    (let [index (inc (first xs))
+                          items (rest xs)]
+                      (dorun (map #(insert_f index %) (reverse items))))) (:+ with_added))))
+    (put-meta! c ::container-content new_items)) )
 
 (defn combo-box-input-arr 
   "Fields:

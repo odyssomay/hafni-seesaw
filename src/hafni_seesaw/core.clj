@@ -5,37 +5,36 @@
                             list-input-arr
                             tabbed-pane-input-arr]]
           [menu :only [menu-input-arr]]
+          [meta :only [put-meta! get-meta]]
           [text :only [text-pane-input-arr text-pane-event]]
           [tree :only [tree-input-arr tree-event]]))
   (:require [clojure.tools.logging :as log]
-            [seesaw.core :as ssw]))
+            (seesaw [core :as ssw]
+                    [meta :as ssw-meta])))
 
-(let [values (atom {})]
-  (defn input-arr [c field]
-    (>>>
-      (&&& 
-        (fn [value] (swap! values assoc-in [c field] value))
-        (condp #(isa? (class %2) %1) c
-;; text
-          javax.swing.JTextPane (text-pane-input-arr c field)
-;; tree
-          javax.swing.JTree (tree-input-arr c field) 
-;; container
-          javax.swing.JComboBox (combo-box-input-arr c field)
-;        javax.swing.JList (list-input-arr c field)
-          javax.swing.JTabbedPane (tabbed-pane-input-arr c field)
-;; menu
-          javax.swing.JMenu (menu-input-arr c field)
-;; otherwise
-          #(ssw/config! c field %)))
-      second))
+(defn input-arr [c field]
+  (>>>
+    (&&& 
+      (fn [value] (put-meta! c field value))
+      (condp #(isa? (class %2) %1) c
+        ;; text
+        javax.swing.JTextPane (text-pane-input-arr c field)
+        ;; tree
+        javax.swing.JTree (tree-input-arr c field) 
+        ;; container
+        javax.swing.JComboBox (combo-box-input-arr c field)
+        ;        javax.swing.JList (list-input-arr c field)
+        javax.swing.JTabbedPane (tabbed-pane-input-arr c field)
+        ;; menu
+        javax.swing.JMenu (menu-input-arr c field)
+        ;; otherwise
+        #(ssw/config! c field %)))
+    second))
 
-  (defn output-arr [c field]
-    (fn [_]
-      (let [value (get-in @values [c field] :error)]
-        (if (= value :error)
-          (log/warn (str "The field " field " is not set for object: " c))
-          value)))))
+(defn output-arr [c field]
+  (fn [_]
+    (get-meta c field)))
+
 
 (defn listen 
   ([c field f]

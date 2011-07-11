@@ -1,4 +1,5 @@
 (ns hafni-seesaw.text
+  (:use [hafni-seesaw.meta :only [put-meta! get-meta]])
   (:require [seesaw.core :as ssw])
   (:import javax.swing.text.StyleConstants))
 
@@ -38,65 +39,64 @@
                           coll)))
     #(ssw/config! c field %)))
 
-(let [event_holder (atom {})]
-  (defn text-pane-event 
-    "Events:
+(defn text-pane-event 
+  "Events:
 
-IMPORTANT:
-    if you use any of these events, the document of the text pane will change!
-    Also, if you change the document after you used one of the events, 
-    the events will no longer have any effect.
+  IMPORTANT:
+  if you use any of these events, the document of the text pane will change!
+  Also, if you change the document after you used one of the events, 
+  the events will no longer have any effect.
 
-    :inserted - text was inserted, sends the 
-                offset and the inserted text | [Int String]
-    :removed - text was removed, sends the offset
-               and length of the removed text | [Int Int]
-    :insert - ADVANCED! 
-              When the user inserts text (and before it has been
-              added to the area) a pair with the offset
-              of the insertion and the text to insert is sent to 
-              this event. The return value of this event should be
-              of the same form, and will be the offset and text actually
-              inserted into the area. If this event isn't connected
-              the text is simply inserted as it normally would | [Int String]
-    :remove - ADVANCED!
-              Like :insert with the difference that the pair holds the
-              offset and length of the removal. | [Int Int]"
-    [c field f]
-    (if (case field
-          :inserted true
-          :removed true
-          :insert true
-          :remove true
-          false)
-      (if (contains? @event_holder c)
-        (let [a (get-in @event_holder [c field])]
-          (reset! a f)
-          #(reset! a nil))
-        (let [inserted_f (atom nil)
-              removed_f (atom nil)
-              insert_f (atom nil)
-              remove_f (atom nil)
-              document (proxy [javax.swing.text.DefaultStyledDocument] []
-                         (insertString [offset text a]
-                                       (let [ins (if @insert_f
-                                                   (@insert_f [offset text])
-                                                   [offset text])]
-                                         (proxy-super insertString (first ins) (second ins) a)
-                                         (if @inserted_f
-                                           (@inserted_f ins))))
-                         (remove [offset length]
-                                 (let [remv (if @remove_f
-                                              (@remove_f [offset length])
-                                              [offset length])]
-                                   (proxy-super remove (first remv) (second remv))
-                                   (if @removed_f
-                                     (@removed_f remv)))))]
-          (swap! event_holder assoc c 
-                 {:inserted inserted_f
-                  :removed removed_f
-                  :insert insert_f
-                  :remove insert_f })
-          (.setDocument c document)
-          (recur c field f)))
-      #(ssw/listen c field f)))) ;; else clause of (if (case field ...
+  :inserted - text was inserted, sends the 
+              offset and the inserted text | [Int String]
+  :removed - text was removed, sends the offset
+             and length of the removed text | [Int Int]
+  :insert - ADVANCED! 
+            When the user inserts text (and before it has been
+            added to the area) a pair with the offset
+            of the insertion and the text to insert is sent to 
+            this event. The return value of this event should be
+            of the same form, and will be the offset and text actually
+            inserted into the area. If this event isn't connected
+            the text is simply inserted as it normally would | [Int String]
+  :remove - ADVANCED!
+            Like :insert with the difference that the pair holds the
+            offset and length of the removal. | [Int Int]"
+  [c field f]
+  (if (case field
+        :inserted true
+        :removed true
+        :insert true
+        :remove true
+        false)
+    (if-let [d (get-meta c ::document-events)]
+      (let [a (get d field)]
+        (do (reset! a f)
+            #(reset! a nil)))
+      (let [inserted_f (atom nil)
+            removed_f (atom nil)
+            insert_f (atom nil)
+            remove_f (atom nil)
+            document (proxy [javax.swing.text.DefaultStyledDocument] []
+                       (insertString [offset text a]
+                                     (let [ins (if @insert_f
+                                                 (@insert_f [offset text])
+                                                 [offset text])]
+                                       (proxy-super insertString (first ins) (second ins) a)
+                                       (if @inserted_f
+                                         (@inserted_f ins))))
+                       (remove [offset length]
+                               (let [remv (if @remove_f
+                                            (@remove_f [offset length])
+                                            [offset length])]
+                                 (proxy-super remove (first remv) (second remv))
+                                 (if @removed_f
+                                   (@removed_f remv)))))]
+        (put-meta! c ::document-events
+               {:inserted inserted_f
+                :removed removed_f
+                :insert insert_f
+                :remove insert_f })
+        (.setDocument c document)
+        (recur c field f)))
+    #(ssw/listen c field f))) ;; else clause of (if (case field ...
